@@ -1,0 +1,317 @@
+---
+title: "Pre-Processing Text"
+subtitle: Text as Data
+author: "Amber Boydstun & Cory Struthers"
+date: "Spring 2025"
+output:
+  pdf_document:
+    toc: true
+    toc_depth: 3
+  html_document:
+    toc: true
+    toc_depth: 3
+    df_print: paged
+  word_document:
+    toc: true
+    toc_depth: 3
+---
+
+```{r, setup, include=FALSE}
+knitr::opts_knit$set(root.dir = "~/Library/CloudStorage/Box-Box/A_teaching/POL290G_TextAsData/modules/data/")
+```
+
+### Introduction
+
+After data has been gathered or collected, we load the text data with the corresponding metadata. We then review patterns. Patterns in the text can provide useful context about the types of analysis choices that may be (in)appropriate based on the data generation process (DGP) that we understand was responsible for the data as we receive them. 
+
+In this module, we'll need the following packages:
+
+``` {r, results = 'hide', message = FALSE}
+
+# Load packages
+require(tidyverse)
+require(readxl)
+require(quanteda)
+library(quanteda.textstats)
+
+# Set working directory
+setwd("~/Library/CloudStorage/Box-Box/A_teaching/POL290G_TextAsData/modules/data/")
+getwd() # view working directory
+
+```
+
+First we upload the raw data, which sometimes includes metadata about the text itself (e.g., the speaker of the text, source of the text, date).
+
+``` {r, message = FALSE}
+
+# Load data and with doc_id_keep
+news_data <- read_xlsx("~/Library/CloudStorage/Box-Box/A_teaching/POL290G_TextAsData/modules/data/sample_news_1995-2017.xlsx") 
+
+# Examine metadata (i.e., the variable names)
+names(news_data)
+
+# Read text
+news_data$text[1]
+
+# Check out source
+news_data$Source[1]
+```
+
+### Create a corpus
+
+A corpus object saves text (character strings in a format that can be analyzed with text-as-data tools and pairs text with document-level variables (metadata) that tell us something about the text. Almost always, we're interested in understanding differences in the text according to one or more document-level variables. These metadata variables are called "docvars" (`docvars` in `quanteda`, which is a comprehensive text-as-data package in R).
+
+We typically create a corpus from a data file that includes both text and docvars. Every corpus includes a "doc_id", which is either assigned by default in the format "text#" or by the researcher using the `docid_field` option in the `corpus` function. 
+
+```{r, message = FALSE}
+
+# Create the corpus and look at it
+news_corp <- corpus(news_data, text_field = "text")
+print(news_corp)
+    # Confirming: 1,000 documents with 8 docvars
+
+```
+
+We can extract metadata using `docvars`, which stores the metadata in the columns of the text file we transformed to a corpus (so we can look at it). This is useful in a workflow where the corpus has been saved as an RDS file and we no longer rely on the original dataframe. 
+
+We can access docvars using the `$` operator, like we would for a dataframe. 
+
+```{r, message = FALSE}
+
+# View unique sources in the corpus 
+unique(news_corp$Source)
+
+# Store only the metadata (docvars)
+metadata_news <- docvars(news_corp)
+
+```
+
+We can create additional docvars in the corpus as well.
+
+```{r, message = FALSE}
+
+# Create a docvar for the corpus (and restore the metadata if we want), in this case as a character string
+news_corp$newscountry <- as.character("United States")
+head(news_corp$newscountry, 10)
+
+# Re-store only the metadata with this new docvar
+metadata_news <- docvars(news_corp)
+```
+
+There are a number of ways to transform the corpus. First, we can subset the corpus based on docvars. 
+
+
+```{r, message = FALSE}
+
+# Subset to Washington Post & NY Times only
+news_corp_wp_nyt <- corpus_subset(news_corp, Source %in% c("new york times", "washington post"))
+ndoc(news_corp_wp_nyt)
+
+```
+```{r, message = FALSE}
+# At this point (and any other point) we can make a dataframe if we want to view our data
+news_df <- convert(news_corp_wp_nyt, to = "data.frame")
+news_df$text[1]
+```
+
+Second, we can reshape the corpus into different units: documents, paragraphs, and sentences. 
+
+```{r, message = FALSE}
+
+# Reshape to paragraphs 
+# We could also use `to = "sentences"`
+news_corp_wp_nyt_paragraphs <- corpus_reshape(news_corp_wp_nyt, to = "paragraphs")
+ndoc(news_corp_wp_nyt_paragraphs)
+
+# Make sure the full text vs. paragraph reshape worked
+news_df_para <- convert(news_corp_wp_nyt_paragraphs, to = "data.frame")
+news_df_para$text[1]
+```
+
+Third, we can split up segments of text based on _patterns_, including exact matches or regular expressions. For example, segmenting is often needed to split a document based on a speaker, in the case of a transcript. This is a really powerful feature of `quanteda` because it does the string splitting for you. All docvars are retained during these transformations.
+
+```{r, message = FALSE}
+
+# Split at periods (into sentences) -- an example!
+# "regex" for regular expressions; "fixed" for exact matching
+news_corp_periods <- corpus_segment(news_corp_wp_nyt, pattern = ".", valuetype = "fixed", 
+                            extract_pattern = TRUE, pattern_position = "before")
+ndoc(news_corp_periods)
+head(news_corp_periods)
+
+```
+
+The corpus is now ready for analysis. Like an R dataframe, we can save the corpus as an RDS object to avoid repeating these steps in a workflow. We'll go back to the full corpus here, but you could use any subsetted, re-shaped, and/or sectioned version of the corpus from the above steps.
+
+```{r, message = FALSE}
+
+saveRDS(news_corp, "news_corp.RDS")
+
+```
+
+\
+
+### Tokenize corpus and reduce complexity
+
+Most text analysis methods require tokenization of the corpus. Tokenization breaks a corpus into vectors of words, n-grams, or sentences. From a programming and English-language perspective, tokenization is simply splitting the text up by white space. 
+
+Tokenization is one of the most critical steps in pre-processing because the researcher makes a number of decisions that will affect analysis outcomes. Many of these decisions are based on pre-existing dictionaries that other researchers have developed (e.g., what counts as a stopword), and so it's important to examine those dictionaries to make sure we understand the decisions we're really making. 
+
+Tokenization decisions include:
+
+* **Removing punctuation, URLs, symbols, numbers**: For many research questions, researchers are often not interested in how many commas, apostrophes, periods, symbols, URLS, or numbers appear within the text, and thus choose to delete them.
+
+* **Lowercasing**: Replace all capital letters with lowercase letters. The idea is that the word "This" is no different than "this" for most projects and research questions.
+
+* **Removing stopwords**: Stop words are common words used across documents that do not give much information about the task at hand. In English, common words such as "and", "the", and "that" may be removed from the documents to reduce the size and complexity of the feature set.
+
+* **Generating n-grams**: We can incorporate elements of positional analysis by identifying *n-grams* or multi-word expressions (phrases). Analysts can identify specific n-grams to capture in a tokens document or convert the whole tokens object to n-grams (n-grams of 2 and 3 are most common). N-grams are important for bag-of-word approaches that would otherwise ignore the conceptual link between compound words like "death" and "penalty". Collocation analysis can be used to identify common n-grams in the text.
+
+* **Stemming**: Many words and phrases are conjugated but hold the same meaning. For example, in most contexts, the word "immigrant" has the same relevance as "immigrants" or "immigration". Asterisks match zero or more characters in `quanteda`. For the concept "immigrant", for example, we can use "immig*". We can also use `tokens_wordstem` in `quanteda` to stem all words.
+
+* **Maintaining document length**: Sometimes we need to retain information on terms (tokens) we remove, for example when applying methods that utilize information on word ordering. `quanteda` offers the `padding` option, which is defaulted to `FALSE`. When true, an empty string will remain where removed tokens previously existed.
+
+`quanteda` provides all the functions we need to reduce the complexity of our text data following the above steps, using variations of `tokens()` from `quanteda package`.
+
+
+```{r, message = FALSE}
+
+# Tokenize with no adjustments
+toks_news <- tokens(news_corp)
+print(toks_news[1:2])
+
+# Use tokens_remove to drop stopwords
+toks_news_subs <- tokens_remove(toks_news, stopwords("english"))
+print(toks_news_subs[1:2])
+
+# Stem words
+toks_news_subs <- tokens_wordstem(toks_news_subs)
+
+# We can instead pipe functions in one ordered step
+toks_news_subs <- tokens(news_corp, 
+                        remove_url = TRUE, 
+                        remove_punct = TRUE, 
+                        remove_symbols = TRUE, 
+                        remove_numbers = TRUE) %>% 
+    tokens_select(pattern = stopwords("en"), selection = "remove", padding=TRUE) %>% # add padding to preserve sentence structure
+    tokens_tolower() %>% # note to_lower here
+    tokens_wordstem()
+print(toks_news_subs[1:2])
+
+```
+
+Oftentimes, words only meaningfully represent topics, sentiment, or other latent concepts when put together. For example, "death" on its own has an entirely different meaning than "death penalty". These phrases are called "n-grams" or "compound tokens" and must be included in the process of tokenization or will otherwise not be captured in the subsequent steps of analysis.
+
+There are two approaches to dealing with phrases. One option is using `tokens_ngrams()`, where the user specifies the number of words that should be included in each token. This approach transforms the entire corpus into phrases. 
+
+```{r, message = FALSE}
+
+# Convert tokens to n-grams using first approach
+toks_news_ngrams <- tokens_ngrams(toks_news_subs, n = 2:3) # specifying 2 and 3 n-grams
+head(toks_news_ngrams[[1]], 15)
+head(toks_news_ngrams[[2]], 15)
+
+```
+
+While both efficient and useful when the user is uncertain about the scope of meaningful phrases, the approach also returns a very large tokens object without necessarily adding much information. 
+
+Alternatively, the user can apply `tokens_compund` to capture n-grams (certain phrases) more selectively. 
+
+```{r, message = FALSE}
+
+# Use token_compound to add n-grams selectively - remember to use stem terms if you've stemmed words
+toks_news_comp <- tokens_compound(toks_news_subs, 
+                                 pattern = phrase(c("climat *", "death penalt", 
+                                                    "border fenc", "histor site")))
+print(toks_news_comp[1:2])
+
+```
+
+Finally, how might we identify important compound tokens when we don't know what they are? 
+
+Collocation analysis, which identifies words that are commonly seen together in a text, is an efficient way to locate common multi-word expressions.  
+
+Analysts can search for collocations with certain attributes, such as proper nouns (with capitalized words), or search for collocations more liberally. `textstat_collocations` can be used on tokens or corpus objects.
+
+Let's try it first using our tokens with no pre-processing.
+
+```{r, message = FALSE}
+
+# Find all collocations in original tokens object
+news_corp_coll <- textstat_collocations(toks_news, size = 2:3, min_count = 10)
+news_corp_coll
+```
+
+Not quite what we want, right? Now again with our pre-processed tokens where we removed stopwords.
+
+```{r, message = FALSE}
+
+news_corp_coll_no_stop <- textstat_collocations(toks_news_subs, size = 2:3, min_count = 10)
+news_corp_coll_no_stop
+
+```
+
+Finally, we can add collocations to the original tokens object (single n-grams), and remove unnecessary padding we preserved in the initial core tokens object.
+
+```{r, message = FALSE}
+
+# Add to tokens document
+news_toks_all <- tokens_compound(toks_news_subs, news_corp_coll_no_stop, concatenator = " ") %>%
+    tokens_select(padding=FALSE) %>% # remove padding
+    tokens_wordstem # stem words after adding collocations
+tail(news_toks_all)
+
+```
+
+
+
+### Regular Expressions
+
+Oftentimes, we identify a pattern in a body of text from the DGP that could lead to false conclusions. Say that we want to create a network linking members of Congress to other speakers they address in their legislative speeches to uncover informal coalitions among members. Creating this network would involve using computational text methods to identify members of Congress that come up in the text. But members of Congress often yield their time to colleagues at the end of their speech -- a procedure that may have little to do with coalition building. Leaving the statement where time is yielded would introduce considerable noise and error into the analysis.  
+
+One way we can handle such problematic patterns is editing the text before turning it into a corpus. We can use basic functions in R (like `gsub` and `grep`) and packages like `stringi` and `stringr` to edit text, relying heavily on regular expressions (RegEx) to edit out problematic text. Regular expressions are useful because they can identify a sequence of characters that specifies a search pattern in text. Once that search pattern has been identified, we can use commands in R to make changes to the text. Like many programming opportunities, RegEx can be frustrating to work with but has incredible potential. Websites like *https://regex101.com/*, online R resources for data science -- [Robert Peng's explanation of regular expressions in R, for example](https://bookdown.org/rdpeng/rprogdatascience/regular-expressions.html) or [Dave Child's cheat sheet](https://cheatography.com/davechild/cheat-sheets/regular-expressions/pdf_bw/), and Stack Overflow are your friends when you need to edit text.  
+
+It's important to note that in many situations, patterns that stem from the DGP will _not_ cause systematic bias in a text analysis. In the example below, we demonstrate one way to use RegEx to remove the text that comes before the phrase "legislative counsel's digestab" in the bills data, including the title of the bill and other preamble. Whether these terms and preamble are problematic depends heavily on the research question. Whereas the phrase would likely cause few inferential challenges in a topic model used to measure issue emphases in legislative bills, it might be problematic in a word frequency count used to measure the distribution of venues legislators pay attention to in policymaking.
+
+
+```{r, message = FALSE}
+
+# Using regular expressions to drop common phrase and preamble in bill text
+bills_data <- readRDS("sample_bills_docid.rds") 
+bills_data$text[2]
+```
+  
+```{r, message = FALSE}
+bills_data$text_processed <- gsub(".*legislative counsel's digest", "", bills_data$text)
+  # Create new column for edited text to preserve original data
+
+# Check a sample of the processed text 
+bills_data$text_processed[2]
+
+```
+---
+
+### Homework
+
+---
+
+#### Discussion Question
+1. When might collocation analysis be problematic on a tokens object? Explain in a few sentences.
+
+#### Project Questions (show your work)
+1. Pick a corpus. You could pick your own corpus or, if you want a suggestion, you could make a corpus for the twitter immigration data ("sample_immigration_tweets_2013-2017.csv") and save the corpus as an RDS object.
+
+2. Identify an analysis goal. For example, using the twitter immigration data, you could subset the corpus to years 2016-2017 and aim to identify the most frequently used terms/concepts in immigration twitter data during the change of presidential administrations. 
+
+3. Tokenize and pre-process your corpus with your goal in mind, explaining these decisions.
+
+4. Repeat Step 3 but making different (yet still rational) pre-processing decisions toward the _same_ research goal, again explaining your decisions.
+
+5. Finally, discuss: what worked and what didn't, and why? Explain the similarities and differences between your two approaches and what you learned.
+
+
+
+
+
+
+
