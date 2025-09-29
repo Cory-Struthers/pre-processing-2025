@@ -1,23 +1,23 @@
 ---
 title: "Pre-Processing Text"
-subtitle: Text as Data
 author: "Amber Boydstun & Cory Struthers"
-date: "Spring 2025"
+date: "Fall 2025"
 output:
-  pdf_document:
-    toc: true
-    toc_depth: 3
   html_document:
     toc: true
     toc_depth: 3
     df_print: paged
+  pdf_document:
+    toc: true
+    toc_depth: 3
   word_document:
     toc: true
     toc_depth: 3
+subtitle: Introduction to Text as Data
 ---
 
 ```{r, setup, include=FALSE}
-knitr::opts_knit$set(root.dir = "~/Library/CloudStorage/Box-Box/A_teaching/POL290G_TextAsData/modules/data/")
+knitr::opts_knit$set(root.dir = "~/Dropbox/text-as-data-JUST-CORY-AND-AMBER/modules_2024/data/")
 ```
 
 ### Introduction
@@ -35,7 +35,7 @@ require(quanteda)
 library(quanteda.textstats)
 
 # Set working directory
-setwd("~/Library/CloudStorage/Box-Box/A_teaching/POL290G_TextAsData/modules/data/")
+setwd("~/Dropbox/text-as-data-JUST-CORY-AND-AMBER/modules_2024/data/")
 getwd() # view working directory
 
 ```
@@ -45,7 +45,7 @@ First we upload the raw data, which sometimes includes metadata about the text i
 ``` {r, message = FALSE}
 
 # Load data and with doc_id_keep
-news_data <- read_xlsx("~/Library/CloudStorage/Box-Box/A_teaching/POL290G_TextAsData/modules/data/sample_news_1995-2017.xlsx") 
+news_data <- read_xlsx("sample_news_1995-2017.xlsx") 
 
 # Examine metadata (i.e., the variable names)
 names(news_data)
@@ -264,31 +264,6 @@ tail(news_toks_all)
 ```
 
 
-
-### Regular Expressions
-
-Oftentimes, we identify a pattern in a body of text from the DGP that could lead to false conclusions. Say that we want to create a network linking members of Congress to other speakers they address in their legislative speeches to uncover informal coalitions among members. Creating this network would involve using computational text methods to identify members of Congress that come up in the text. But members of Congress often yield their time to colleagues at the end of their speech -- a procedure that may have little to do with coalition building. Leaving the statement where time is yielded would introduce considerable noise and error into the analysis.  
-
-One way we can handle such problematic patterns is editing the text before turning it into a corpus. We can use basic functions in R (like `gsub` and `grep`) and packages like `stringi` and `stringr` to edit text, relying heavily on regular expressions (RegEx) to edit out problematic text. Regular expressions are useful because they can identify a sequence of characters that specifies a search pattern in text. Once that search pattern has been identified, we can use commands in R to make changes to the text. Like many programming opportunities, RegEx can be frustrating to work with but has incredible potential. Websites like *https://regex101.com/*, online R resources for data science -- [Robert Peng's explanation of regular expressions in R, for example](https://bookdown.org/rdpeng/rprogdatascience/regular-expressions.html) or [Dave Child's cheat sheet](https://cheatography.com/davechild/cheat-sheets/regular-expressions/pdf_bw/), and Stack Overflow are your friends when you need to edit text.  
-
-It's important to note that in many situations, patterns that stem from the DGP will _not_ cause systematic bias in a text analysis. In the example below, we demonstrate one way to use RegEx to remove the text that comes before the phrase "legislative counsel's digestab" in the bills data, including the title of the bill and other preamble. Whether these terms and preamble are problematic depends heavily on the research question. Whereas the phrase would likely cause few inferential challenges in a topic model used to measure issue emphases in legislative bills, it might be problematic in a word frequency count used to measure the distribution of venues legislators pay attention to in policymaking.
-
-
-```{r, message = FALSE}
-
-# Using regular expressions to drop common phrase and preamble in bill text
-bills_data <- readRDS("sample_bills_docid.rds") 
-bills_data$text[2]
-```
-  
-```{r, message = FALSE}
-bills_data$text_processed <- gsub(".*legislative counsel's digest", "", bills_data$text)
-  # Create new column for edited text to preserve original data
-
-# Check a sample of the processed text 
-bills_data$text_processed[2]
-
-```
 ---
 
 ### Homework
@@ -298,20 +273,12 @@ bills_data$text_processed[2]
 #### Discussion Question
 1. When might collocation analysis be problematic on a tokens object? Explain in a few sentences.
 
-#### Project Questions (show your work)
+#### Coding Questions
+
 1. Pick a corpus. You could pick your own corpus or, if you want a suggestion, you could make a corpus for the twitter immigration data ("sample_immigration_tweets_2013-2017.csv") and save the corpus as an RDS object.
 
 2. Identify an analysis goal. For example, using the twitter immigration data, you could subset the corpus to years 2016-2017 and aim to identify the most frequently used terms/concepts in immigration twitter data during the change of presidential administrations. 
 
 3. Tokenize and pre-process your corpus with your goal in mind, explaining these decisions.
-
-4. Repeat Step 3 but making different (yet still rational) pre-processing decisions toward the _same_ research goal, again explaining your decisions.
-
-5. Finally, discuss: what worked and what didn't, and why? Explain the similarities and differences between your two approaches and what you learned.
-
-
-
-
-
 
 

@@ -1621,9 +1621,9 @@ display: none;
 
 
 <h1 class="title toc-ignore">Pre-Processing Text</h1>
-<h3 class="subtitle">Text as Data</h3>
+<h3 class="subtitle">Introduction to Text as Data</h3>
 <h4 class="author">Amber Boydstun &amp; Cory Struthers</h4>
-<h4 class="date">Spring 2025</h4>
+<h4 class="date">Fall 2025</h4>
 
 </div>
 
@@ -1634,8 +1634,6 @@ display: none;
 corpus</a></li>
 <li><a href="#tokenize-corpus-and-reduce-complexity" id="toc-tokenize-corpus-and-reduce-complexity">Tokenize corpus and
 reduce complexity</a></li>
-<li><a href="#regular-expressions" id="toc-regular-expressions">Regular
-Expressions</a></li>
 <li><a href="#homework" id="toc-homework">Homework</a></li>
 </ul>
 </div>
@@ -1655,13 +1653,13 @@ require(quanteda)
 library(quanteda.textstats)
 
 # Set working directory
-setwd(&quot;~/Library/CloudStorage/Box-Box/A_teaching/POL290G_TextAsData/modules/data/&quot;)
+setwd(&quot;~/Dropbox/text-as-data-JUST-CORY-AND-AMBER/modules_2024/data/&quot;)
 getwd() # view working directory</code></pre>
 <p>First we upload the raw data, which sometimes includes metadata about
 the text itself (e.g., the speaker of the text, source of the text,
 date).</p>
 <pre class="r"><code># Load data and with doc_id_keep
-news_data &lt;- read_xlsx(&quot;~/Library/CloudStorage/Box-Box/A_teaching/POL290G_TextAsData/modules/data/sample_news_1995-2017.xlsx&quot;) 
+news_data &lt;- read_xlsx(&quot;sample_news_1995-2017.xlsx&quot;) 
 
 # Examine metadata (i.e., the variable names)
 names(news_data)</code></pre>
@@ -2018,54 +2016,6 @@ tail(news_toks_all)</code></pre>
 ##  [5] &quot;circumst&quot;      &quot;peopl&quot;         &quot;fundament&quot;     &quot;right&quot;        
 ##  [9] &quot;assert&quot;        &quot;moral&quot;         &quot;religi&quot;        &quot;object&quot;       
 ## [ ... and 144 more ]</code></pre>
-</div>
-<div id="regular-expressions" class="section level3">
-<h3>Regular Expressions</h3>
-<p>Oftentimes, we identify a pattern in a body of text from the DGP that
-could lead to false conclusions. Say that we want to create a network
-linking members of Congress to other speakers they address in their
-legislative speeches to uncover informal coalitions among members.
-Creating this network would involve using computational text methods to
-identify members of Congress that come up in the text. But members of
-Congress often yield their time to colleagues at the end of their speech
-– a procedure that may have little to do with coalition building.
-Leaving the statement where time is yielded would introduce considerable
-noise and error into the analysis.</p>
-<p>One way we can handle such problematic patterns is editing the text
-before turning it into a corpus. We can use basic functions in R (like
-<code>gsub</code> and <code>grep</code>) and packages like
-<code>stringi</code> and <code>stringr</code> to edit text, relying
-heavily on regular expressions (RegEx) to edit out problematic text.
-Regular expressions are useful because they can identify a sequence of
-characters that specifies a search pattern in text. Once that search
-pattern has been identified, we can use commands in R to make changes to
-the text. Like many programming opportunities, RegEx can be frustrating
-to work with but has incredible potential. Websites like <em><a href="https://regex101.com/" class="uri">https://regex101.com/</a></em>,
-online R resources for data science – <a href="https://bookdown.org/rdpeng/rprogdatascience/regular-expressions.html">Robert
-Peng’s explanation of regular expressions in R, for example</a> or <a href="https://cheatography.com/davechild/cheat-sheets/regular-expressions/pdf_bw/">Dave
-Child’s cheat sheet</a>, and Stack Overflow are your friends when you
-need to edit text.</p>
-<p>It’s important to note that in many situations, patterns that stem
-from the DGP will <em>not</em> cause systematic bias in a text analysis.
-In the example below, we demonstrate one way to use RegEx to remove the
-text that comes before the phrase “legislative counsel’s digestab” in
-the bills data, including the title of the bill and other preamble.
-Whether these terms and preamble are problematic depends heavily on the
-research question. Whereas the phrase would likely cause few inferential
-challenges in a topic model used to measure issue emphases in
-legislative bills, it might be problematic in a word frequency count
-used to measure the distribution of venues legislators pay attention to
-in policymaking.</p>
-<pre class="r"><code># Using regular expressions to drop common phrase and preamble in bill text
-bills_data &lt;- readRDS(&quot;sample_bills_docid.rds&quot;) 
-bills_data$text[2]</code></pre>
-<pre><code>## [1] &quot;\n                    california legislature—\n                    2007–2008 regular session\n                senate bill\n              no. 267introduced  by \n                senator\n              romerofebruary 15, 2007 an act to amend section 1000 of the welfare and institutions code, relating to juveniles. legislative counsel&#39;s digestsb 267, as introduced, romero.\n                          department of corrections and rehabilitation: division of juvenile facilities.existing law provides, commencing july 1, 2005, that any reference to the department of the youth authority refers to the department of corrections and rehabilitation, division of juvenile facilities, which has jurisdiction over all educational training and treatment institutions established and maintained in the state as correctional schools for the reception of wards of the juvenile court and other persons committed to the department.this bill would make technical, nonsubstantive changes to that provision.digest key\n      vote:\n      majority  \n      appropriation:\n      no  \n      fiscal committee:\n      no  \n      local program:\n      no  bill textthe people of the state of california do enact as follows:section 1. section 1000 of the welfare and institutions code is amended to read:1000. commencing july 1, 2005, any a reference to the department of the youth authority refers to the department of corrections and rehabilitation, division of juvenile facilities, which has jurisdiction over all educational training and treatment institutions now or hereafter established and maintained in the state as correctional schools for the reception of wards of the juvenile court and other persons committed to the department.&quot;</code></pre>
-<pre class="r"><code>bills_data$text_processed &lt;- gsub(&quot;.*legislative counsel&#39;s digest&quot;, &quot;&quot;, bills_data$text)
-  # Create new column for edited text to preserve original data
-
-# Check a sample of the processed text 
-bills_data$text_processed[2]</code></pre>
-<pre><code>## [1] &quot;sb 267, as introduced, romero.\n                          department of corrections and rehabilitation: division of juvenile facilities.existing law provides, commencing july 1, 2005, that any reference to the department of the youth authority refers to the department of corrections and rehabilitation, division of juvenile facilities, which has jurisdiction over all educational training and treatment institutions established and maintained in the state as correctional schools for the reception of wards of the juvenile court and other persons committed to the department.this bill would make technical, nonsubstantive changes to that provision.digest key\n      vote:\n      majority  \n      appropriation:\n      no  \n      fiscal committee:\n      no  \n      local program:\n      no  bill textthe people of the state of california do enact as follows:section 1. section 1000 of the welfare and institutions code is amended to read:1000. commencing july 1, 2005, any a reference to the department of the youth authority refers to the department of corrections and rehabilitation, division of juvenile facilities, which has jurisdiction over all educational training and treatment institutions now or hereafter established and maintained in the state as correctional schools for the reception of wards of the juvenile court and other persons committed to the department.&quot;</code></pre>
 <hr />
 </div>
 <div id="homework" class="section level3">
@@ -2078,8 +2028,8 @@ bills_data$text_processed[2]</code></pre>
 Explain in a few sentences.</li>
 </ol>
 </div>
-<div id="project-questions-show-your-work" class="section level4">
-<h4>Project Questions (show your work)</h4>
+<div id="coding-questions" class="section level4">
+<h4>Coding Questions</h4>
 <ol style="list-style-type: decimal">
 <li><p>Pick a corpus. You could pick your own corpus or, if you want a
 suggestion, you could make a corpus for the twitter immigration data
@@ -2091,12 +2041,6 @@ to identify the most frequently used terms/concepts in immigration
 twitter data during the change of presidential administrations.</p></li>
 <li><p>Tokenize and pre-process your corpus with your goal in mind,
 explaining these decisions.</p></li>
-<li><p>Repeat Step 3 but making different (yet still rational)
-pre-processing decisions toward the <em>same</em> research goal, again
-explaining your decisions.</p></li>
-<li><p>Finally, discuss: what worked and what didn’t, and why? Explain
-the similarities and differences between your two approaches and what
-you learned.</p></li>
 </ol>
 </div>
 </div>
